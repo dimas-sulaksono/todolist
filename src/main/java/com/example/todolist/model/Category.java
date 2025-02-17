@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data // anotasi lombok buat bikin getter setter otomatis
 @AllArgsConstructor // buat contructor yang membutuhkan field (argument)
@@ -25,6 +26,9 @@ public class Category {
 
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+    @OneToMany(mappedBy = "category", fetch = FetchType.LAZY)
+    private List<Todolist> todolists;
 
     @PrePersist // anotasi buat datetime otomatis ketika pertama kali dibuat
     public void onCreate() {
