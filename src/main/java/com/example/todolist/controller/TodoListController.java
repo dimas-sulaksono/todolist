@@ -11,9 +11,14 @@ import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.UUID;
 
@@ -126,4 +131,18 @@ public class TodoListController {
                 .ok(new ApiResponse<>(200, todolists));
     }
 
+    @GetMapping("/images/{filename}")
+    public ResponseEntity<byte[]> getImage(@PathVariable String filename){
+        try {
+            Path filePath = Paths.get("src/main/resources/static/images/", filename);
+            byte[] imageContent = Files.readAllBytes(filePath);
+            return ResponseEntity.ok()
+                    .contentType(MediaType.IMAGE_JPEG)
+                    .body(imageContent);
+        } catch (DataNotFoundException e) {
+            throw e;
+        } catch (IOException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
 }
