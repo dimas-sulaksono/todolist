@@ -1,90 +1,85 @@
 package com.example.todolist.service;
 
+import com.example.todolist.dto.request.LoginRequest;
 import com.example.todolist.dto.request.UserRequest;
 import com.example.todolist.dto.response.UserResponse;
-import com.example.todolist.exception.DataNotFoundException;
-import com.example.todolist.exception.DuplicateDataException;
 import com.example.todolist.model.User;
 import com.example.todolist.repository.UserRepository;
+import com.example.todolist.security.CustomUserDetails;
+import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
-import java.util.UUID;
+import java.util.Optional;
 
 @Service
-public class UserService {
+public class UserService implements UserDetailsService {
     @Autowired
     private UserRepository userRepository;
 
-    public List<UserResponse> findAll() {
-        try{
-            return userRepository.findAll()
-                    .stream()
-                    .map(this::convertToResponse)
-                    .toList();
-        } catch (Exception e){
-            throw new RuntimeException("Failed to get data users");
+    @Autowired
+    @Lazy
+    private PasswordEncoder passwordEncoder;
+
+    @Override
+    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException{
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(()-> new UsernameNotFoundException("User not found with username: "+ username));
+        return new CustomUserDetails(user);
+    }
+
+    @Transactional
+    public UserResponse registerUser(UserRequest userRequest){
+        if(userRepository.findByUsername(userRequest.getUsername()).isPresent()){
+            throw new RuntimeException("username already eexists!");
         }
-    }
 
-    public UserResponse create(UserRequest userRequest) {
-        try {
-            User user = new User();
-            user.setUsername(userRequest.getUsername());
-            user.setEmail(userRequest.getEmail());
-            user.setPassword(userRequest.getPassword());
-            user.setRole(userRequest.getRole());
-            user = userRepository.save(user);
-            return convertToResponse(user);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to create user: " + e.getMessage(), e);
+        if (userRepository.findByEmail(userRequest.getEmail()).isPresent()){
+            throw new RuntimeException("Email already exists!");
         }
+
+        User user = new User();
+        user.setUsername(userRequest.getUsername());
+        user.setEmail(userRequest.getEmail());
+        user.setPassword(passwordEncoder.encode(userRequest.getPassword()));
+        user.setRole(Optional.ofNullable(userRequest.getRole()).orElse("USER"));
+        user = userRepository.save(user);
+        User register = userRepository.save(user);
+        return convertToResponse(register);
     }
 
-    public UserResponse updateUser(UUID id, UserRequest userRequest) {
-        try {
-            User user = userRepository.findById(id)
-                    .orElseThrow(() -> new DataNotFoundException("User with id " + id + " not found"));
-            if (userRepository.findByUsername(userRequest.getUsername()).isPresent()) {
-                throw new DuplicateDataException("Username " + userRequest.getUsername() + " already exists");
-            } else {
-                user.setUsername(userRequest.getUsername());
-                user.setEmail(userRequest.getEmail());
-                user.setPassword(userRequest.getPassword());
-                user.setRole(userRequest.getRole());
-                user = userRepository.save(user);
-                return convertToResponse(user);
-            }
-        } catch (DataNotFoundException e) {
-            throw e;
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to update user: " + e.getMessage(), e);
-        }
+    public UserResponse loginUser2(LoginRequest loginRequest){
+        Optional<User> userOptional = userRepository.findByUsername(loginRequest.getUsername());
+        if (userOptional.isEmpty()){
+            throw new RuntimeException("User not found with username: "+ loginRequest.getUsername());}
+        User user = userOptional.get();
+        if (!user.getPassword().equals(loginRequest.getPassword())) {
+                throw new RuntimeException("Invalid password");}
+        return convertToResponse(user);
     }
 
-    public void deleteUser(UUID id) {
-        try {
-            if (!userRepository.existsById(id)) {
-                throw new RuntimeException("User with id " + id + " not found");
-            }
-            userRepository.deleteById(id);
-        } catch (DataNotFoundException e){
-            throw e;
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to delete user: " + e.getMessage(), e);
-        }
+    public UserResponse loginUser(LoginRequest loginRequest){
+        Optional<User> userOptional = userRepository.findByUsername(loginRequest.getUsername());
+        if (userOptional.isEmpty()){
+            throw new RuntimeException("User not found with username: "+ loginRequest.getUsername());}
+        User user = userOptional.get();
+        if (!passwordEncoder.matches(loginRequest.getPassword(), user.getPassword())) {
+            throw new RuntimeException("Invalid password");}
+        return convertToResponse(user);
     }
 
-    private UserResponse convertToResponse(User user) {
-        UserResponse response = new UserResponse();
-        response.setUuid(user.getId());
-        response.setUsername(user.getUsername());
-        response.setEmail(user.getEmail());
-        response.setRole(user.getRole());
-        response.setCreatedAt(user.getCreatedAt());
-        response.setUpdatedAt(user.getUpdatedAt());
-        return response;
+    private UserResponse convertToResponse(User user){
+        UserResponse userResponse = new UserResponse();
+        userResponse.setUsername(user.getUsername());
+        userResponse.setEmail(user.getEmail());
+        userResponse.setRole(user.getRole());
+        userResponse.setCreatedAt(user.getCreatedAt());
+        userResponse.setUpdatedAt(user.getUpdatedAt());
+        return userResponse;
     }
-
 }

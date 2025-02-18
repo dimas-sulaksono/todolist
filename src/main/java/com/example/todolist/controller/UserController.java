@@ -1,79 +1,91 @@
 package com.example.todolist.controller;
 
+import com.example.todolist.Util.JwtUtil;
+import com.example.todolist.dto.request.LoginRequest;
 import com.example.todolist.dto.request.UserRequest;
 import com.example.todolist.dto.response.ApiResponse;
 import com.example.todolist.dto.response.UserResponse;
+import com.example.todolist.exception.DuplicateDataException;
+import com.example.todolist.model.User;
+import com.example.todolist.repository.UserRepository;
 import com.example.todolist.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-import java.util.UUID;
+import java.util.Optional;
+
 
 @RestController
-@RequestMapping("/api/todolist/user")
+@RequestMapping("/api/user")
 public class UserController {
+
     @Autowired
     private UserService userService;
 
-    @GetMapping
-    public ResponseEntity<?> getAllUser() {
-        try {
-            List<UserResponse> response = userService.findAll();
-            return ResponseEntity
-                    .status(HttpStatus.OK.value())
-                    .body(new ApiResponse<>(HttpStatus.OK.value(), response));
-        } catch (Exception e) {
-            return ResponseEntity
-                    .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
-                    .body(new ApiResponse<>(HttpStatus.INTERNAL_SERVER_ERROR.value(), e.getMessage()));
-        }
-    }
+    @Autowired
+    private UserRepository userRepository;
 
-    @PostMapping
-    public ResponseEntity<?> registerUser(@RequestBody UserRequest request) {
-        try {
-            UserResponse response = userService.create(request);
-            return ResponseEntity
-                    .status(HttpStatus.OK.value())
-                    .body(new ApiResponse<>(HttpStatus.OK.value(), response));
-        } catch (Exception e) {
-            return ResponseEntity
-                    .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
-                    .body(new ApiResponse<>(HttpStatus.INTERNAL_SERVER_ERROR.value(), e.getMessage()));
-        }
-    }
+    @Autowired
+    private JwtUtil jwtUtil;
 
-    @PutMapping("/{id}")
-    public ResponseEntity<?> updateUser(@PathVariable("id") UUID id, @RequestBody UserRequest request) {
-        try {
-            UserResponse response = userService.updateUser(id, request);
-            return ResponseEntity
-                    .status(HttpStatus.OK.value())
-                    .body(new ApiResponse<>(HttpStatus.OK.value(), response));
-        } catch (Exception e) {
-            return ResponseEntity
-                    .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
-                    .body(new ApiResponse<>(HttpStatus.INTERNAL_SERVER_ERROR.value(), e.getMessage()));
-        }
-    }
+    private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<?> deleteUser(@PathVariable("id") UUID id) {
+    @PostMapping("/register")
+    public ResponseEntity<?> registerUser(@RequestBody UserRequest userRequest){
         try {
-            userService.deleteUser(id);
-            return ResponseEntity
-                    .status(HttpStatus.OK.value())
-                    .body(new ApiResponse<>(HttpStatus.OK.value(), "User deleted successfully"));
-        } catch (Exception e) {
-            return ResponseEntity
-                    .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
-                    .body(new ApiResponse<>(HttpStatus.INTERNAL_SERVER_ERROR.value(), "Failed to delete user: " + e.getMessage()));
+            UserResponse userResponse = userService.registerUser(userRequest);
+            return ResponseEntity.ok(new ApiResponse<>(200, userResponse));
+        } catch (DuplicateDataException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(new ApiResponse<>(409, e.getMessage()));
+        } catch (Exception e){
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(500, e.getMessage()));
         }
     }
 
 
+    @PostMapping("/login")
+    public ResponseEntity<?> loginUser(@RequestBody LoginRequest loginRequest){
+        try {
+            UserResponse userResponse = userService.loginUser(loginRequest);
+            String token = jwtUtil.generateToken(userResponse.getUsername());
+            return ResponseEntity.ok(new ApiResponse<String>(200, token));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(new ApiResponse<String>(401, "invalid username or password"));
+        }
+    }
+
+    @PostMapping("/login2")
+    public ResponseEntity<?> loginUser2(@RequestBody LoginRequest loginRequest) {
+        try {
+            Optional<User> userOptional = userRepository.findByUsername(loginRequest.getUsername());
+            if (userOptional.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(new ApiResponse<>(401, "Invalid username or password"));
+            }
+
+            User user = userOptional.get();
+
+            if (!passwordEncoder.matches(loginRequest.getPassword(), user.getPassword())) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(new ApiResponse<>(401, "Invalid username or password"));
+            }
+
+            UserResponse userResponse = userService.loginUser(loginRequest);
+            String token = jwtUtil.generateToken(userResponse.getUsername());
+
+            return ResponseEntity.ok(new ApiResponse<>(200, token));
+
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(new ApiResponse<>(401, "Invalid username or password"));
+        }
+    }
 
 }
