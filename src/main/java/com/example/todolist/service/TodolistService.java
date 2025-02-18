@@ -11,6 +11,7 @@ import com.example.todolist.repository.TodolistRepository;
 import com.example.todolist.repository.UserRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -21,6 +22,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.text.SimpleDateFormat;
+import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
@@ -38,7 +40,8 @@ public class TodolistService {
     @Autowired
     private UserRepository userRepository;
 
-    private static String imageDirectory ="src/main/resources/static/images/";
+    @Value("${file.IMAGE_DIR}")
+    private String imageDirectory;
 
     private static long maxFileSize = 5 * 1024 * 1024; //5MB
 
@@ -112,7 +115,7 @@ public class TodolistService {
 
     public Optional<TodolistResponse> findById(Long id) {
         try {
-            return todolistRepository.findById(id).map(this::convertToResponse);
+            return todolistRepository.findByIdAndDeletedAtIsNull(id).map(this::convertToResponse);
         } catch (Exception e) {
             throw new RuntimeException("Failed to find todolist by id: " + e.getMessage(), e);
         }
@@ -121,7 +124,7 @@ public class TodolistService {
     public Page<TodolistResponse> findAll(int page, int size) {
         try {
             Pageable pageable = PageRequest.of(page, size);
-            Page<Todolist> todolists = todolistRepository.findAll(pageable);
+            Page<Todolist> todolists = todolistRepository.findAllByDeletedAtIsNull(pageable);
             return todolists.map(this::convertToResponse);
         } catch (Exception e) {
             throw new RuntimeException("Failed to find all todolists: " + e.getMessage(), e);
@@ -160,6 +163,7 @@ public class TodolistService {
         }
     }
 
+    // hard delete
     @Transactional
     public void deleteTodoList(Long id) {
         try {
@@ -173,6 +177,28 @@ public class TodolistService {
             throw new RuntimeException("Failed to delete todolist" + e.getMessage(), e);
         }
     }
+
+    // softDelete
+    @Transactional
+    public TodolistResponse softDelete(Long id){
+        try{
+            Todolist todolist = todolistRepository.findById(id)
+                    .orElseThrow(() -> new DataNotFoundException("Todolist with ID " + id + " not found"));
+
+            if (todolist.getDeletedAt() != null) {
+                throw new RuntimeException("Todolist with ID " + id + " is already deleted");
+            } else {
+                todolist.setDeletedAt(LocalDateTime.now());
+                Todolist updateTodolist = todolistRepository.save(todolist);
+                return convertToResponse(updateTodolist);
+            }
+        } catch (DataNotFoundException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to update todolist: "+ e.getMessage(), e);
+        }
+    }
+
 
     public List<TodolistResponse> searchByTitle(String title) {
         try {
