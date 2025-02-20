@@ -40,7 +40,7 @@ public class SecurityConfig {
                     public CorsConfiguration getCorsConfiguration(HttpServletRequest request) {
                         CorsConfiguration corsConfiguration = new CorsConfiguration();
                         corsConfiguration.setAllowCredentials(true); // mengizinkan kredensial
-                        corsConfiguration.addAllowedOrigin("*"); // menizinkan apa saja yang bisa akses resource ini
+                        corsConfiguration.addAllowedOrigin("http://localhost:3000"); // menizinkan apa saja yang bisa akses resource ini
                         corsConfiguration.addAllowedHeader("*"); // mengizinkan semu header
                         corsConfiguration.addAllowedMethod("*"); // mengizinkan semua method (post, put, get, delete, dll)
                         corsConfiguration.setMaxAge(3600L); // durasi dalam detik
@@ -51,6 +51,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(session -> session
                         // user
                         .requestMatchers(HttpMethod.GET,"/api/user/all").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.GET,"/api/user/id/**").permitAll()
                         .requestMatchers(HttpMethod.POST,"/api/user/register").permitAll()
                         .requestMatchers(HttpMethod.POST,"/api/user/login").permitAll()
                         .requestMatchers(HttpMethod.POST,"/api/user/login2").permitAll()

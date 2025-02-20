@@ -224,7 +224,18 @@ public class TodolistService {
 
     public List<TodolistResponse> findByUserId(UUID userId) {
         try {
-            return todolistRepository.findByUserId(userId)
+            return todolistRepository.findByUserIdAndDeletedAtIsNull(userId)
+                    .stream()
+                    .map(this::convertToResponse)
+                    .collect(Collectors.toList());
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to find by user id: " + e.getMessage(), e);
+        }
+    }
+
+    public List<TodolistResponse> findByUserIdAndTitle(UUID userId, String title) {
+        try {
+            return todolistRepository.findByUserIdAndTitleContainingIgnoreCase(userId, title)
                     .stream()
                     .map(this::convertToResponse)
                     .collect(Collectors.toList());

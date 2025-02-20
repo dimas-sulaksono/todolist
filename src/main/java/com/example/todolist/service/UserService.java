@@ -3,6 +3,7 @@ package com.example.todolist.service;
 import com.example.todolist.dto.request.LoginRequest;
 import com.example.todolist.dto.request.UserRequest;
 import com.example.todolist.dto.response.UserResponse;
+import com.example.todolist.exception.DuplicateDataException;
 import com.example.todolist.model.User;
 import com.example.todolist.repository.UserRepository;
 import com.example.todolist.security.CustomUserDetails;
@@ -16,6 +17,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 public class UserService implements UserDetailsService {
@@ -35,13 +37,16 @@ public class UserService implements UserDetailsService {
 
     @Transactional
     public UserResponse registerUser(UserRequest userRequest){
-        if(userRepository.findByUsername(userRequest.getUsername()).isPresent()){
-            throw new RuntimeException("username already eexists!");
-        }
+        Optional<User> existingUser = userRepository.findByUsername(userRequest.getUsername());
+        if (existingUser.isPresent()) {
+            throw new DuplicateDataException("User already exists with username: " + userRequest.getUsername());}
 
-        if (userRepository.findByEmail(userRequest.getEmail()).isPresent()){
-            throw new RuntimeException("Email already exists!");
-        }
+        Optional<User> existingEmail = userRepository.findByEmail(userRequest.getEmail());
+        if (existingEmail.isPresent()) {
+            throw new DuplicateDataException("Email already registered: " + userRequest.getEmail());}
+
+        if (userRequest.getPassword().length() < 8) {
+            throw new RuntimeException("Password must be at least 8 characters long");}
 
         User user = new User();
         user.setUsername(userRequest.getUsername());
@@ -71,6 +76,15 @@ public class UserService implements UserDetailsService {
         if (!passwordEncoder.matches(loginRequest.getPassword(), user.getPassword())) {
             throw new RuntimeException("Invalid password");}
         return convertToResponse(user);
+    }
+
+    public UUID getUserIdByUsername(String username) {
+        Optional<User> user = userRepository.findByUsername(username);
+        if (user.isPresent()) {
+            return user.get().getId(); // Mengembalikan userId
+        } else {
+            throw new RuntimeException("User not found with username: " + username);
+        }
     }
 
     private UserResponse convertToResponse(User user){

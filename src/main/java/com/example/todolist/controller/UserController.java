@@ -42,6 +42,9 @@ public class UserController {
         } catch (DuplicateDataException e) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body(new ApiResponse<>(409, e.getMessage()));
+        } catch(RuntimeException e){
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ApiResponse<>(400, e.getMessage()));
         } catch (Exception e){
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new ApiResponse<>(500, e.getMessage()));
@@ -85,6 +88,16 @@ public class UserController {
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(new ApiResponse<>(401, "Invalid username or password"));
+        }
+    }
+
+    @GetMapping("/id/{username}")
+    public ResponseEntity<?> getUserId(@PathVariable String username) {
+        try {
+            String userId = String.valueOf(userService.getUserIdByUsername(username));
+            return ResponseEntity.ok().body(new ApiResponse<>(200, userId));
+        } catch (Exception e) {
+            return ResponseEntity.status(404).body(new ApiResponse<>(404, "User not found"));
         }
     }
 

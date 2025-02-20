@@ -157,6 +157,13 @@ public class TodoListController {
                 .ok(new ApiResponse<>(200, todolists));
     }
 
+    @GetMapping("user/{userId}/search")
+    public ResponseEntity<ApiResponse<List<TodolistResponse>>> getTodolistByUserId(@PathVariable UUID userId, String title) {
+        List<TodolistResponse> todolists = todolistService. findByUserIdAndTitle(userId, title);
+        return ResponseEntity
+                .ok(new ApiResponse<>(200, todolists));
+    }
+
     @GetMapping("/images2/{filename}")
     public ResponseEntity<byte[]> getimage2(@PathVariable String filename) throws IOException{
         // cari file di direktori
