@@ -120,7 +120,6 @@ public class TodoListController {
         }
     }
 
-
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteTodoList(@PathVariable("id") Long id) {
         try {
@@ -145,8 +144,8 @@ public class TodoListController {
     }
 
     @GetMapping("/filter")
-    public ResponseEntity<ApiResponse<List<TodolistResponse>>> filterByCategory(@RequestParam Long categoryId) {
-        List<TodolistResponse> todolists = todolistService.filterByCategory(categoryId);
+    public ResponseEntity<ApiResponse<List<TodolistResponse>>> filterByCategory(@RequestParam UUID userId, Long categoryId) {
+        List<TodolistResponse> todolists = todolistService.filterByCategory(userId, categoryId);
         return ResponseEntity.ok(new ApiResponse<>(200, todolists));
     }
 
@@ -159,7 +158,7 @@ public class TodoListController {
 
     @GetMapping("user/{userId}/search")
     public ResponseEntity<ApiResponse<List<TodolistResponse>>> getTodolistByUserId(@PathVariable UUID userId, String title) {
-        List<TodolistResponse> todolists = todolistService. findByUserIdAndTitle(userId, title);
+        List<TodolistResponse> todolists = todolistService.findByUserIdAndTitle(userId, title);
         return ResponseEntity
                 .ok(new ApiResponse<>(200, todolists));
     }
@@ -221,5 +220,21 @@ public class TodoListController {
                 .status(HttpStatus.OK)
                 .contentLength(inputStream.contentLength())
                 .body(inputStream);
+    }
+
+    @GetMapping("/{userId}/trash")
+    public ResponseEntity<?> getTodolistDeletedAtIsNotNull(
+            @PathVariable UUID userId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "5") int size) {
+        try {
+            Page<TodolistResponse> todolists = todolistService.todolistTrash(userId, page, size);
+            return ResponseEntity
+                    .ok(new PaginatedResponse<>(200, todolists));
+        } catch (Exception e) {
+            return ResponseEntity
+                    .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(HttpStatus.INTERNAL_SERVER_ERROR.value(), "Failed to retrieve todolist: " + e.getMessage()));
+        }
     }
 }

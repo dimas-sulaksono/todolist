@@ -51,12 +51,13 @@ public class SecurityConfig {
                 .authorizeHttpRequests(session -> session
                         // user
                         .requestMatchers(HttpMethod.GET,"/api/user/all").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.GET,"/api/user/**").permitAll()
                         .requestMatchers(HttpMethod.GET,"/api/user/id/**").permitAll()
                         .requestMatchers(HttpMethod.POST,"/api/user/register").permitAll()
                         .requestMatchers(HttpMethod.POST,"/api/user/login").permitAll()
                         .requestMatchers(HttpMethod.POST,"/api/user/login2").permitAll()
-                        .requestMatchers(HttpMethod.PUT,"/api/user/update").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.DELETE,"/api/user/delete").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT,"/api/user/update/**").permitAll()
+                        .requestMatchers(HttpMethod.DELETE,"/api/user/delete/**").permitAll()
 
                         // todolist
                         .requestMatchers(HttpMethod.GET,"/api/todolist/**").permitAll()
@@ -66,8 +67,8 @@ public class SecurityConfig {
 
                         // category
                         .requestMatchers(HttpMethod.GET,"/api/category/**").permitAll()
-                        .requestMatchers(HttpMethod.POST,"/api/category/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.PUT,"/api/category/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.POST,"/api/category/**").permitAll()
+                        .requestMatchers(HttpMethod.PUT,"/api/category/**").permitAll()
                         .requestMatchers(HttpMethod.DELETE,"/api/category/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )

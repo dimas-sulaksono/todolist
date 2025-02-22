@@ -163,6 +163,16 @@ public class TodolistService {
         }
     }
 
+    public Page<TodolistResponse> todolistTrash(UUID userId, int page, int size) {
+        try {
+            Pageable pageable = PageRequest.of(page, size);
+            Page<Todolist> todolists = todolistRepository.findByUserIdAndDeletedAtIsNotNull(userId, pageable);
+            return todolists.map(this::convertToResponse);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to find all todolists: " + e.getMessage(), e);
+        }
+    }
+
     // hard delete
     @Transactional
     public void deleteTodoList(Long id) {
@@ -199,7 +209,6 @@ public class TodolistService {
         }
     }
 
-
     public List<TodolistResponse> searchByTitle(String title) {
         try {
             return todolistRepository.findByTitleContainingIgnoreCase(title)
@@ -211,9 +220,9 @@ public class TodolistService {
         }
     }
 
-    public List<TodolistResponse> filterByCategory(Long categoryId) {
+    public List<TodolistResponse> filterByCategory(UUID userId, Long categoryId) {
         try {
-            return todolistRepository.findByCategoryId(categoryId)
+            return todolistRepository.findByUserIdAndDeletedAtIsNullAndCategoryId(userId, categoryId)
                     .stream()
                     .map(this::convertToResponse)
                     .collect(Collectors.toList());
@@ -235,7 +244,7 @@ public class TodolistService {
 
     public List<TodolistResponse> findByUserIdAndTitle(UUID userId, String title) {
         try {
-            return todolistRepository.findByUserIdAndTitleContainingIgnoreCase(userId, title)
+            return todolistRepository.findByUserIdAndDeletedAtIsNullAndTitleContainingIgnoreCase(userId, title)
                     .stream()
                     .map(this::convertToResponse)
                     .collect(Collectors.toList());

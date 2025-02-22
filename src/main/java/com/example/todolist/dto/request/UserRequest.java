@@ -5,7 +5,6 @@ import lombok.Data;
 
 @Data
 public class UserRequest {
-    @NotBlank
     private String username;
     private String email;
     private String password;
